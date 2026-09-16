@@ -1,22 +1,299 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../core/theme.dart';
 import '../models/finance_models.dart';
 import '../models/finance_store.dart';
 import '../services/preferences_service.dart';
 
-class Dashboard extends StatefulWidget { final FinanceStore store; const Dashboard({super.key,required this.store}); @override State<Dashboard> createState()=>_DashboardState(); }
-class _DashboardState extends State<Dashboard>{ bool hidden=false; final money=NumberFormat.currency(symbol:'\$',decimalDigits:2); String m(double n)=>hidden?'••••••':money.format(n);
-  @override void initState(){super.initState();PreferencesService().loadPrivacyMode().then((v){if(mounted)setState(()=>hidden=v);});}
-  Future<void> _togglePrivacy()async{final next=!hidden;setState(()=>hidden=next);await PreferencesService().savePrivacyMode(next);}
-  @override Widget build(BuildContext context){final s=widget.store; final recent=[...s.transactions]..sort((a,b)=>b.date.compareTo(a.date)); return SafeArea(child:ListView(padding:const EdgeInsets.all(20),children:[
-    Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text('¡Hola, ${s.profile.name.split(' ').first}!',style:Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight:FontWeight.w800)),const Text('Tu bienestar financiero comienza hoy')]),const CircleAvatar(child:Icon(Icons.person))]),const SizedBox(height:20),
-    Container(padding:const EdgeInsets.all(22),decoration:BoxDecoration(borderRadius:BorderRadius.circular(24),gradient:const LinearGradient(colors:[FinanziaTheme.navy,FinanziaTheme.blue,FinanziaTheme.green])),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Row(mainAxisAlignment:MainAxisAlignment.spaceBetween,children:[const Text('Patrimonio neto',style:TextStyle(color:Colors.white70)),IconButton(tooltip:hidden?'Mostrar importes':'Ocultar importes',onPressed:_togglePrivacy,icon:Icon(hidden?Icons.visibility:Icons.visibility_off,color:Colors.white))]),Text(m(s.netWorth),style:const TextStyle(color:Colors.white,fontSize:34,fontWeight:FontWeight.w800)),const Text('Activos menos deuda de tarjetas',style:TextStyle(color:Colors.white70))])),const SizedBox(height:14),
-    LayoutBuilder(builder:(context,c)=>c.maxWidth>700?Row(children:[Expanded(child:_Metric('Ingresos del mes',m(s.monthIncome),FinanziaTheme.green,Icons.south_west)),const SizedBox(width:12),Expanded(child:_Metric('Gastos del mes',m(s.monthExpenses),FinanziaTheme.coral,Icons.north_east)),const SizedBox(width:12),Expanded(child:_Metric('Ahorro del mes',m(s.monthIncome-s.monthExpenses),FinanziaTheme.blue,Icons.savings_outlined))]):Column(children:[Row(children:[Expanded(child:_Metric('Ingresos del mes',m(s.monthIncome),FinanziaTheme.green,Icons.south_west)),const SizedBox(width:12),Expanded(child:_Metric('Gastos del mes',m(s.monthExpenses),FinanziaTheme.coral,Icons.north_east))]),const SizedBox(height:12),_Metric('Ahorro del mes',m(s.monthIncome-s.monthExpenses),FinanziaTheme.blue,Icons.savings_outlined)])),const SizedBox(height:18),
-    Text('Mis cuentas',style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w800)),const SizedBox(height:8),Card(child:Column(children:s.accounts.map((a)=>ListTile(leading:CircleAvatar(child:Icon(_accountIcon(a.type))),title:Text(a.name),subtitle:Text(_accountLabel(a.type)),trailing:Text(m(s.balanceFor(a.id)),style:const TextStyle(fontWeight:FontWeight.w700)))).toList())),const SizedBox(height:18),
-    Text('Últimos movimientos',style:Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight:FontWeight.w800)),const SizedBox(height:8),Card(child:Column(children:recent.take(6).map((t)=>ListTile(leading:CircleAvatar(child:Icon(t.type==TransactionType.income?Icons.south_west:t.type==TransactionType.expense?Icons.north_east:Icons.swap_horiz)),title:Text(t.description),subtitle:Text('${t.category} · ${DateFormat('dd MMM').format(t.date)}'),trailing:Text(t.type==TransactionType.income?'+ ${m(t.amount)}':t.type==TransactionType.expense?'- ${m(t.amount)}':m(t.amount),style:TextStyle(fontWeight:FontWeight.w800,color:t.type==TransactionType.income?FinanziaTheme.green:t.type==TransactionType.expense?FinanziaTheme.coral:null)))).toList())),const SizedBox(height:80)
-  ]));}
-  IconData _accountIcon(AccountType t)=>switch(t){AccountType.bank=>Icons.account_balance_outlined,AccountType.cash=>Icons.payments_outlined,AccountType.creditCard=>Icons.credit_card,AccountType.savings=>Icons.savings_outlined};
-  String _accountLabel(AccountType t)=>switch(t){AccountType.bank=>'Cuenta bancaria',AccountType.cash=>'Efectivo',AccountType.creditCard=>'Tarjeta de crédito',AccountType.savings=>'Ahorros'};
+class Dashboard extends StatefulWidget {
+  final FinanceStore store;
+  const Dashboard({super.key, required this.store});
+  @override
+  State<Dashboard> createState() => _DashboardState();
 }
-class _Metric extends StatelessWidget{final String label,value;final Color color;final IconData icon;const _Metric(this.label,this.value,this.color,this.icon);@override Widget build(BuildContext context)=>Card(child:Padding(padding:const EdgeInsets.all(16),child:Row(children:[CircleAvatar(backgroundColor:color.withValues(alpha:.12),child:Icon(icon,color:color)),const SizedBox(width:10),Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[Text(label),Text(value,style:const TextStyle(fontSize:18,fontWeight:FontWeight.w800))]))])));}
+
+class _DashboardState extends State<Dashboard> {
+  bool hidden = false;
+  final money = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+  String m(double n) => hidden ? '••••••' : money.format(n);
+  @override
+  void initState() {
+    super.initState();
+    PreferencesService().loadPrivacyMode().then((v) {
+      if (mounted) setState(() => hidden = v);
+    });
+  }
+
+  Future<void> _togglePrivacy() async {
+    final next = !hidden;
+    setState(() => hidden = next);
+    await PreferencesService().savePrivacyMode(next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.store;
+    final recent = [...s.transactions]
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '¡Hola, ${s.profile.name.split(' ').first}!',
+                    style: Theme.of(context).textTheme.headlineMedium
+                        ?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                  const Text('Tu bienestar financiero comienza hoy'),
+                ],
+              ),
+              const CircleAvatar(child: Icon(Icons.person)),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: const LinearGradient(
+                colors: [
+                  FinanziaTheme.navy,
+                  FinanziaTheme.blue,
+                  FinanziaTheme.green,
+                ],
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Patrimonio neto',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                    IconButton(
+                      tooltip: hidden ? 'Mostrar importes' : 'Ocultar importes',
+                      onPressed: _togglePrivacy,
+                      icon: Icon(
+                        hidden ? Icons.visibility : Icons.visibility_off,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  m(s.netWorth),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 34,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const Text(
+                  'Activos menos deuda de tarjetas',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, c) => c.maxWidth > 700
+                ? Row(
+                    children: [
+                      Expanded(
+                        child: _Metric(
+                          'Ingresos del mes',
+                          m(s.monthIncome),
+                          FinanziaTheme.green,
+                          Icons.south_west,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _Metric(
+                          'Gastos del mes',
+                          m(s.monthExpenses),
+                          FinanziaTheme.coral,
+                          Icons.north_east,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _Metric(
+                          'Ahorro del mes',
+                          m(s.monthIncome - s.monthExpenses),
+                          FinanziaTheme.blue,
+                          Icons.savings_outlined,
+                        ),
+                      ),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _Metric(
+                              'Ingresos del mes',
+                              m(s.monthIncome),
+                              FinanziaTheme.green,
+                              Icons.south_west,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _Metric(
+                              'Gastos del mes',
+                              m(s.monthExpenses),
+                              FinanziaTheme.coral,
+                              Icons.north_east,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      _Metric(
+                        'Ahorro del mes',
+                        m(s.monthIncome - s.monthExpenses),
+                        FinanziaTheme.blue,
+                        Icons.savings_outlined,
+                      ),
+                    ],
+                  ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Mis cuentas',
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: s.accounts
+                  .map(
+                    (a) => ListTile(
+                      leading: CircleAvatar(child: Icon(_accountIcon(a.type))),
+                      title: Text(a.name),
+                      subtitle: Text(_accountLabel(a.type)),
+                      trailing: Text(
+                        m(s.balanceFor(a.id)),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Últimos movimientos',
+            style: Theme.of(context).textTheme.titleLarge
+                ?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: Column(
+              children: recent
+                  .take(6)
+                  .map(
+                    (t) => ListTile(
+                      leading: CircleAvatar(
+                        child: Icon(
+                          t.type == TransactionType.income
+                              ? Icons.south_west
+                              : t.type == TransactionType.expense
+                              ? Icons.north_east
+                              : Icons.swap_horiz,
+                        ),
+                      ),
+                      title: Text(t.description),
+                      subtitle: Text(
+                        '${t.category} · ${DateFormat('dd MMM').format(t.date)}',
+                      ),
+                      trailing: Text(
+                        t.type == TransactionType.income
+                            ? '+ ${m(t.amount)}'
+                            : t.type == TransactionType.expense
+                            ? '- ${m(t.amount)}'
+                            : m(t.amount),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: t.type == TransactionType.income
+                              ? FinanziaTheme.green
+                              : t.type == TransactionType.expense
+                              ? FinanziaTheme.coral
+                              : null,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+          const SizedBox(height: 80),
+        ],
+      ),
+    );
+  }
+
+  IconData _accountIcon(AccountType t) => switch (t) {
+    AccountType.bank => Icons.account_balance_outlined,
+    AccountType.cash => Icons.payments_outlined,
+    AccountType.creditCard => Icons.credit_card,
+    AccountType.savings => Icons.savings_outlined,
+  };
+  String _accountLabel(AccountType t) => switch (t) {
+    AccountType.bank => 'Cuenta bancaria',
+    AccountType.cash => 'Efectivo',
+    AccountType.creditCard => 'Tarjeta de crédito',
+    AccountType.savings => 'Ahorros',
+  };
+}
+
+class _Metric extends StatelessWidget {
+  final String label, value;
+  final Color color;
+  final IconData icon;
+  const _Metric(this.label, this.value, this.color, this.icon);
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: color.withValues(alpha: .12),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
