@@ -1,0 +1,1 @@
+Parche temporal para RC14. Al subir su contenido a la raíz del repositorio, GitHub Actions ejecuta dart format sobre lib/ y test/, verifica el resultado, hace commit de esos cambios en la rama principal y elimina el workflow temporal. No cambia la versión ni crea RC15.
