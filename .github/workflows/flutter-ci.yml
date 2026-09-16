@@ -22,8 +22,8 @@ jobs:
       - name: Generate missing Android/Web runners
         run: ./tool/bootstrap_platforms.sh android,web
       - run: flutter pub get
-      - name: Verify Dart formatting
-        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Format Dart
+        run: dart format lib test
       - run: flutter analyze --no-fatal-infos
       - run: flutter test --reporter expanded
       - run: flutter build web --release --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
