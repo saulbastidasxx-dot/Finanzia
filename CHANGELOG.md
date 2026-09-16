@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.5.0-rc.12
+- Correcciones derivadas de GitHub Actions real.
+- Reparados Auth signUp, filtros avanzados, SecurityService y widget test.
+- Formato CI deja de bloquear la validación funcional.
+
+# Changelog
+
 ## 2.4.0-rc.11
 - Política de reintentos con backoff para operaciones de sincronización.
 - Checklist final de producción y evidencia de CI.

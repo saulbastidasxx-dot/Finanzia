@@ -91,8 +91,8 @@ class SecurityService {
 
   String _derive(String pin,String salt){
     // Iterated SHA-256 raises the cost of brute force for short local PINs.
-    var bytes=utf8.encode('$salt:$pin');
-    for(var i=0;i<60000;i++)bytes=sha256.convert(bytes).bytes;
+    List<int> bytes=utf8.encode('$salt:$pin');
+    for(var i=0;i<60000;i++){bytes=sha256.convert(bytes).bytes;}
     return base64UrlEncode(bytes);
   }
   bool _constantTimeEquals(String a,String b){
