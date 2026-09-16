@@ -44,14 +44,14 @@ class SettingsScreen extends StatelessWidget{
       ListTile(leading:const Icon(Icons.cloud_upload_outlined),title:const Text('Conservar este dispositivo'),subtitle:const Text('Reemplaza la copia en la nube'),onTap:()=>Navigator.pop(c,'up')),
       ListTile(leading:const Icon(Icons.cloud_download_outlined),title:const Text('Conservar la nube'),subtitle:const Text('Reemplaza los datos de este dispositivo'),onTap:()=>Navigator.pop(c,'down'))
     ])));
-    if (action==null||!context.mounted) {return;}
+    if(action==null||!context.mounted)return;
     try{
       final svc=CloudSyncService(Supabase.instance.client);String message='Sincronización completada';
-      if(action=='up')await svc.upload(store);else if(action=='down')await svc.download(store);else{
+      if(action=='up'){await svc.upload(store);}else if(action=='down'){await svc.download(store);}else{
         final r=await svc.smartSync(store);
         message=switch(r){SyncOutcome.uploaded=>'Cambios de este dispositivo subidos',SyncOutcome.downloaded=>'Cambios de la nube descargados',SyncOutcome.merged=>'Cambios combinados sin conflicto',SyncOutcome.unchanged=>'Todo está sincronizado',SyncOutcome.conflict=>'Conflicto detectado en el mismo registro: elige qué copia conservar'};
       }
-      if (context.mounted) {ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(message)));}
+      if(context.mounted){ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(message)));}
     }catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('No se pudo sincronizar: $e')));}
   }
 
@@ -60,7 +60,7 @@ class SettingsScreen extends StatelessWidget{
     if(enabled){
       final action=await showModalBottomSheet<String>(context:context,builder:(c)=>SafeArea(child:Column(mainAxisSize:MainAxisSize.min,children:[const ListTile(title:Text('Seguridad'),subtitle:Text('El bloqueo con PIN está activo. En dispositivos compatibles también podrás usar biometría.')),ListTile(leading:const Icon(Icons.password),title:const Text('Cambiar PIN'),onTap:()=>Navigator.pop(c,'change')),ListTile(leading:const Icon(Icons.lock_open),title:const Text('Desactivar PIN'),onTap:()=>Navigator.pop(c,'off'))])));
       if(action=='off'){await svc.disablePin();if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Bloqueo con PIN desactivado')));}else if(action=='change'&&context.mounted){await _setPin(context,svc);}
-    }else await _setPin(context,svc);
+    }else {await _setPin(context,svc);}
   }
 
   Future<void> _setPin(BuildContext context,SecurityService svc)async{
@@ -87,13 +87,13 @@ class SettingsScreen extends StatelessWidget{
     final currentEmail=authUser?.email??store.profile.email;
     final n=TextEditingController(text:store.profile.name),e=TextEditingController(text:currentEmail),key=GlobalKey<FormState>();
     await showDialog(context:context,builder:(c)=>AlertDialog(title:const Text('Mi perfil'),content:Form(key:key,child:Column(mainAxisSize:MainAxisSize.min,children:[TextFormField(controller:n,validator:(v)=>FinanziaValidators.requiredText(v,label:'El nombre'),decoration:const InputDecoration(labelText:'Nombre')),const SizedBox(height:12),TextFormField(controller:e,keyboardType:TextInputType.emailAddress,validator:FinanziaValidators.email,decoration:InputDecoration(labelText:'Correo',helperText:authUser==null?'Perfil local':'Supabase enviará confirmación si es necesaria'))])),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancelar')),FilledButton(onPressed:()async{
-      if (!(key.currentState?.validate() {??false))return;}
+      if(!(key.currentState?.validate()??false))return;
       final name=n.text.trim(),email=e.text.trim();
       try{
         if(authUser!=null&&email!=currentEmail){await Supabase.instance.client.auth.updateUser(UserAttributes(email:email));}
         await store.updateProfile(store.profile.copyWith(name:name,email:email));
-        if (c.mounted) {Navigator.pop(c);}
-        if (context.mounted) {ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(authUser!=null&&email!=currentEmail?'Perfil actualizado. Revisa tu correo si Supabase solicita confirmar el cambio.':'Perfil actualizado.')));}
+        if(c.mounted)Navigator.pop(c);
+        if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(authUser!=null&&email!=currentEmail?'Perfil actualizado. Revisa tu correo si Supabase solicita confirmar el cambio.':'Perfil actualizado.')));
       }catch(err){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('No se pudo actualizar el perfil: $err')));}
     },child:const Text('Guardar'))]));
   }

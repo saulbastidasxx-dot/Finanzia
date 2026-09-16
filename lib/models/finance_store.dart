@@ -38,10 +38,10 @@ class FinanceStore extends ChangeNotifier {
       budgets.addAll((d['budgets']??[]).map<Budget>((e)=>Budget.fromJson(Map<String,dynamic>.from(e))));
       goals.addAll((d['goals']??[]).map<SavingsGoal>((e)=>SavingsGoal.fromJson(Map<String,dynamic>.from(e))));
       debts.addAll((d['debts']??[]).map<Debt>((e)=>Debt.fromJson(Map<String,dynamic>.from(e))));
-      if (d['recurring']!=null) {recurring.addAll((d['recurring'] as List).map((e)=>RecurringPayment.fromJson(Map<String,dynamic>.from(e))));}
-      if (d['changes']!=null) {changes.addAll((d['changes'] as List).map((e)=>ChangeEvent.fromJson(Map<String,dynamic>.from(e))));}
+      if(d['recurring']!=null) recurring.addAll((d['recurring'] as List).map((e)=>RecurringPayment.fromJson(Map<String,dynamic>.from(e))));
+      if(d['changes']!=null) changes.addAll((d['changes'] as List).map((e)=>ChangeEvent.fromJson(Map<String,dynamic>.from(e))));
       if(d['categories']!=null){categories..clear()..addAll(List<String>.from(d['categories']));}
-      if (d['profile']!=null) {profile=UserProfile.fromJson(Map<String,dynamic>.from(d['profile']));}
+      if(d['profile']!=null) profile=UserProfile.fromJson(Map<String,dynamic>.from(d['profile']));
     }else{
       _seed();localModifiedAt=DateTime.now().toUtc();await _save(touch:false);
     }
@@ -102,19 +102,19 @@ class FinanceStore extends ChangeNotifier {
 
   void _record(String entity,String entityId,String action,[Map<String,dynamic>? payload]){
     changes.add(ChangeEvent(id:const Uuid().v4(),entity:entity,entityId:entityId,action:action,changedAt:DateTime.now().toUtc(),payload:payload));
-    if (changes.length>250) {changes.removeRange(0,changes.length-250);}
+    if(changes.length>250){changes.removeRange(0,changes.length-250);}
   }
 
   Future<void> replaceAll({required UserProfile profile,required List<FinanceAccount> accounts,required List<FinanceTransaction> transactions,required List<Budget> budgets,required List<SavingsGoal> goals,required List<Debt> debts,required List<RecurringPayment> recurring,DateTime? syncedAt})async{
     this.profile=profile;this.accounts..clear()..addAll(accounts);this.transactions..clear()..addAll(transactions);this.budgets..clear()..addAll(budgets);this.goals..clear()..addAll(goals);this.debts..clear()..addAll(debts);this.recurring..clear()..addAll(recurring);
-    if(syncedAt!=null){lastSyncedAt=syncedAt;localModifiedAt=syncedAt;for(var i=0;i<changes.length;i++)changes[i]=changes[i].copyWith(synced:true);}
+    if(syncedAt!=null){lastSyncedAt=syncedAt;localModifiedAt=syncedAt;for(var i=0;i<changes.length;i++){changes[i]=changes[i].copyWith(synced:true);}}
     await _save(touch:false);notifyListeners();
   }
-  Future<void> markSynced(DateTime at)async{lastSyncedAt=at;localModifiedAt=at;for(var i=0;i<changes.length;i++)changes[i]=changes[i].copyWith(synced:true);await _save(touch:false);notifyListeners();}
+  Future<void> markSynced(DateTime at)async{lastSyncedAt=at;localModifiedAt=at;for(var i=0;i<changes.length;i++){changes[i]=changes[i].copyWith(synced:true);}await _save(touch:false);notifyListeners();}
   Future<void> markChangesSynced(Iterable<String> ids,DateTime at)async{final set=ids.toSet();for(var i=0;i<changes.length;i++){if(set.contains(changes[i].id))changes[i]=changes[i].copyWith(synced:true);}lastSyncedAt=at;localModifiedAt=at;await _save(touch:false);notifyListeners();}
 
   Future<void> _save({bool touch=true})async{
-    if (touch) {localModifiedAt=DateTime.now().toUtc();}
+    if(touch)localModifiedAt=DateTime.now().toUtc();
     final p=await SharedPreferences.getInstance();
     await p.setString(_key,jsonEncode({'accounts':accounts.map((e)=>e.toJson()).toList(),'transactions':transactions.map((e)=>e.toJson()).toList(),'budgets':budgets.map((e)=>e.toJson()).toList(),'goals':goals.map((e)=>e.toJson()).toList(),'debts':debts.map((e)=>e.toJson()).toList(),'recurring':recurring.map((e)=>e.toJson()).toList(),'categories':categories,'profile':profile.toJson(),'changes':changes.map((e)=>e.toJson()).toList(),'deviceId':deviceId,'localModifiedAt':localModifiedAt.toIso8601String(),'lastSyncedAt':lastSyncedAt?.toIso8601String()}));
   }
