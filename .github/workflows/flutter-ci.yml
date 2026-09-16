@@ -21,6 +21,13 @@ jobs:
       - run: flutter --version
       - name: Generate missing Android/Web runners
         run: ./tool/bootstrap_platforms.sh android,web
+      - name: Enable Android core library desugaring
+        run: |
+          FILE="android/app/build.gradle.kts"
+          sed -i "/compileOptions {/a\\            isCoreLibraryDesugaringEnabled = true" "$FILE"
+          sed -i "/dependencies {/a\\    coreLibraryDesugaring(\"com.android.tools:desugar_jdk_libs:2.1.4\")" "$FILE"
+          echo "=== Android desugaring ==="
+          grep -n "isCoreLibraryDesugaringEnabled\|coreLibraryDesugaring" "$FILE"
       - run: flutter pub get
       - name: Format Dart
         run: dart format lib test
