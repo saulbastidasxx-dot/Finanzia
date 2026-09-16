@@ -1,7 +1,7 @@
 name: finanzia
 description: Finanzia - finanzas personales premium para web, Android e iOS.
 publish_to: 'none'
-version: 2.5.0-rc.12+25
+version: 2.6.0-rc.13+26
 environment:
   sdk: '>=3.3.0 <4.0.0'
 dependencies:

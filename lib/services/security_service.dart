@@ -21,7 +21,7 @@ class SecurityService {
   Future<bool> get biometricAvailable => biometrics.isAvailable();
 
   Future<void> setPin(String pin) async {
-    if(!RegExp(r'^\d{4,6}$').hasMatch(pin)) throw ArgumentError('El PIN debe tener entre 4 y 6 dígitos.');
+    if (!RegExp(r'^\d{4,6}$') {.hasMatch(pin)) throw ArgumentError('El PIN debe tener entre 4 y 6 dígitos.');}
     final random=Random.secure();
     final salt=List<int>.generate(32,(_)=>random.nextInt(256));
     final saltText=base64UrlEncode(salt);
@@ -38,9 +38,8 @@ class SecurityService {
     final p=await SharedPreferences.getInstance();
     final until=p.getInt(_lockUntilKey)??0;
     final now=DateTime.now().millisecondsSinceEpoch;
-    if(until>now)return PinCheckResult.locked;
-    if(until!=0)await _resetAttempts(p);
-
+    if (until>now) {return PinCheckResult.locked;}
+    if (until!=0) {await _resetAttempts(p);}
     final salt=await _secure.read(key:_saltKey);
     final stored=await _secure.read(key:_hashKey);
     bool valid=false;
@@ -97,7 +96,7 @@ class SecurityService {
   }
   bool _constantTimeEquals(String a,String b){
     if(a.length!=b.length)return false;var diff=0;
-    for(var i=0;i<a.length;i++)diff|=a.codeUnitAt(i)^b.codeUnitAt(i);
+    for (var i=0;i<a.length;i++) {diff|=a.codeUnitAt(i)^b.codeUnitAt(i);}
     return diff==0;
   }
   Future<void> _resetAttempts(SharedPreferences p)async{await p.remove(_attemptsKey);await p.remove(_lockUntilKey);}

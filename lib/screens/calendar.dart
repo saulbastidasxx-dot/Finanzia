@@ -41,8 +41,8 @@ class CalendarScreen extends StatelessWidget{
         TextFormField(controller:name,decoration:const InputDecoration(labelText:'Nombre'),validator:(v)=>(v??'').trim().isEmpty?'Escribe un nombre':null),
         TextFormField(controller:amount,keyboardType:const TextInputType.numberWithOptions(decimal:true),decoration:const InputDecoration(labelText:'Monto'),validator:(v)=>(double.tryParse((v??'').replaceAll(',','.'))??0)<=0?'Introduce un monto mayor que 0':null),
         TextFormField(controller:day,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'Día del mes (1–28)'),validator:(v){final n=int.tryParse(v??'');return n==null||n<1||n>28?'Usa un día entre 1 y 28':null;}),
-        DropdownButtonFormField<String>(value:category,items:store.categories.map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>category=v!,decoration:const InputDecoration(labelText:'Categoría')),
-        DropdownButtonFormField<String>(value:account,items:store.accounts.map((a)=>DropdownMenuItem(value:a.id,child:Text(a.name))).toList(),onChanged:(v)=>account=v!,decoration:const InputDecoration(labelText:'Cuenta')),
+        DropdownButtonFormField<String>(initialValue:category,items:store.categories.map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>category=v!,decoration:const InputDecoration(labelText:'Categoría')),
+        DropdownButtonFormField<String>(initialValue:account,items:store.accounts.map((a)=>DropdownMenuItem(value:a.id,child:Text(a.name))).toList(),onChanged:(v)=>account=v!,decoration:const InputDecoration(labelText:'Cuenta')),
         SwitchListTile(value:expense,onChanged:(v)=>set(()=>expense=v),title:Text(expense?'Gasto':'Ingreso')),SwitchListTile(value:active,onChanged:(v)=>set(()=>active=v),title:const Text('Activo'))
       ]))),
       actions:[TextButton(onPressed:()=>Navigator.pop(d),child:const Text('Cancelar')),FilledButton(onPressed:()async{

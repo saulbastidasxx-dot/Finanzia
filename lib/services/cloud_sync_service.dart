@@ -15,7 +15,7 @@ class CloudSyncService {
   String get uid => client.auth.currentUser!.id;
 
   bool _isUuid(String value)=>RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$').hasMatch(value);
-  String _cloudId(String kind,String local)=>_isUuid(local)?local:const Uuid().v5(Uuid.NAMESPACE_URL,'finanzia:$uid:$kind:$local');
+  String _cloudId(String kind,String local)=>_isUuid(local)?local:const Uuid().v5(Namespace.url.value,'finanzia:$uid:$kind:$local');
   String _entityCloudId(ChangeEvent e)=>e.entity=='profile'?uid:_cloudId(e.entity,e.entityId);
 
   Future<DateTime?> cloudUpdatedAt() async {

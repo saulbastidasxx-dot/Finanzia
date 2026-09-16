@@ -12,7 +12,7 @@ import 'services/supabase_config.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   Object? startupError;
-  if(SupabaseConfig.configured){try{await Supabase.initialize(url:SupabaseConfig.url,anonKey:SupabaseConfig.anonKey);}catch(e){startupError=e;}}
+  if(SupabaseConfig.configured){try{await Supabase.initialize(url:SupabaseConfig.url,anonKey:SupabaseConfig.publishableKey);}catch(e){startupError=e;}}
   runApp(FinanziaApp(startupError:startupError));
 }
 class FinanziaApp extends StatefulWidget { final Object? startupError;const FinanziaApp({super.key,this.startupError}); @override State<FinanziaApp> createState()=>_FinanziaAppState(); }

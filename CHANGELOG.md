@@ -1,11 +1,15 @@
 # Changelog
 
+## 2.6.0-rc.13
+- Limpieza de las 23 incidencias reportadas por Flutter Analyze en RC12.
+- Migraciones de APIs obsoletas de Supabase, formularios, UUID y PDF.
+- Lints Web condicionales acotados a implementaciones Web.
+- Formateo automático previo al analyze de CI.
+
 ## 2.5.0-rc.12
 - Correcciones derivadas de GitHub Actions real.
 - Reparados Auth signUp, filtros avanzados, SecurityService y widget test.
 - Formato CI deja de bloquear la validación funcional.
-
-# Changelog
 
 ## 2.4.0-rc.11
 - Política de reintentos con backoff para operaciones de sincronización.
@@ -13,8 +17,6 @@
 - Documentación de secretos y variables de entorno.
 - Refuerzo de `.gitignore` para secretos/artefactos locales.
 - Pruebas de RetryPolicy.
-
-# Changelog
 
 ## 2.3.0-rc.10
 - Sincronización reforzada e idempotencia del snapshot.
