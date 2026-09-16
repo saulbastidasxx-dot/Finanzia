@@ -1,5 +1,38 @@
 # Changelog
 
+## 2.4.0-rc.11
+- Política de reintentos con backoff para operaciones de sincronización.
+- Checklist final de producción y evidencia de CI.
+- Documentación de secretos y variables de entorno.
+- Refuerzo de `.gitignore` para secretos/artefactos locales.
+- Pruebas de RetryPolicy.
+
+# Changelog
+
+## 2.3.0-rc.10
+- Sincronización reforzada e idempotencia del snapshot.
+- Retención del historial de sync e índice SQL.
+- Auditoría RLS para staging.
+- CI más estricto Android/Web/iOS.
+- Checklist E2E de eliminación de cuenta.
+- Pruebas ChangeEvent.
+
+# Changelog\n\n## 2.2.0-rc.9\n- Compartir/guardar CSV y PDF en móvil.\n- Calendario recurrente reforzado.\n- Deduplicación de notificaciones corregida.\n- Nuevas pruebas recurrentes.\n\n# Changelog
+
+## 2.1.0-rc.8
+- PIN en almacenamiento seguro y bloqueo temporal por intentos fallidos.
+- Estado visible de sincronización y reintento tras error.
+- Correo de perfil coherente con Supabase Auth.
+- Navegación móvil reducida a cinco destinos principales.
+- Arranque robusto y limpieza sensible tras eliminación de cuenta.
+- CI genera runners faltantes y valida Android/Web/iOS sin firma.
+
+
+## 2.0.0-rc.7
+- Correcciones de auditoría P0/P1: sincronización no destructiva, ciclo de tarjetas, reportes coherentes y CI.
+- Limpieza de alertas duplicadas y configuración de análisis.
+- Se mantiene RC hasta superar builds reales y QA RLS/E2E.
+
 ## 1.9.0-rc.6
 - Tests de transferencias y pagos de tarjeta sin doble conteo.
 - Cálculos de ahorro y tasa de ahorro.

@@ -51,3 +51,10 @@ create index if not exists sync_changes_user_changed_idx on sync_changes(user_id
 alter table sync_changes enable row level security;
 drop policy if exists own_rows on sync_changes;
 create policy own_rows on sync_changes for all using (auth.uid()=user_id) with check (auth.uid()=user_id);
+
+-- RC7: ciclo de facturación por tarjeta.
+alter table accounts add column if not exists statement_day int check(statement_day between 1 and 31);
+alter table accounts add column if not exists due_day int check(due_day between 1 and 31);
+
+-- RC10: sync hardening.
+create index if not exists sync_changes_user_entity_changed_idx on sync_changes(user_id,entity,entity_id,changed_at desc);

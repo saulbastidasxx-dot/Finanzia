@@ -1,7 +1,6 @@
 import 'legal.dart';
 import 'categories.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/finance_store.dart';
 import '../models/user_profile.dart';
@@ -72,12 +71,12 @@ class SettingsScreen extends StatelessWidget{
   }
 
   Future<void> _export(BuildContext context)async{
-    try{final result=await ExportService().exportCsv(store);if(!context.mounted)return;await Clipboard.setData(ClipboardData(text:result));ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('CSV exportado: $result')));}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('No se pudo exportar: $e')));}
+    try{final result=await ExportService().exportCsv(store);if(!context.mounted)return;ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('CSV listo: $result')));}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('No se pudo exportar: $e')));}
   }
 
 
   Future<void> _exportPdf(BuildContext context)async{
-    try{final result=await PdfExportService().exportReport(store);if(!context.mounted)return;ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Reporte PDF generado: $result')));}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('No se pudo generar el PDF: $e')));}
+    try{final result=await PdfExportService().exportReport(store);if(!context.mounted)return;ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('Reporte PDF listo: $result')));}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('No se pudo generar el PDF: $e')));}
   }
 
   Future<void> _alertPreferences(BuildContext context) async {
@@ -85,7 +84,21 @@ class SettingsScreen extends StatelessWidget{
     await showDialog(context:context,builder:(c)=>StatefulBuilder(builder:(c,set)=>AlertDialog(title:const Text('Alertas'),content:Column(mainAxisSize:MainAxisSize.min,children:[SwitchListTile(title:const Text('Activar alertas'),value:x.enabled,onChanged:(v)=>set(()=>x=AlertPreferences(enabled:v,budgets:x.budgets,recurring:x.recurring,debts:x.debts))),SwitchListTile(title:const Text('Presupuestos'),value:x.budgets,onChanged:x.enabled?(v)=>set(()=>x=AlertPreferences(enabled:x.enabled,budgets:v,recurring:x.recurring,debts:x.debts)):null),SwitchListTile(title:const Text('Pagos recurrentes'),value:x.recurring,onChanged:x.enabled?(v)=>set(()=>x=AlertPreferences(enabled:x.enabled,budgets:x.budgets,recurring:v,debts:x.debts)):null),SwitchListTile(title:const Text('Deudas'),value:x.debts,onChanged:x.enabled?(v)=>set(()=>x=AlertPreferences(enabled:x.enabled,budgets:x.budgets,recurring:x.recurring,debts:v)):null)]),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancelar')),FilledButton(onPressed:()async{await svc.saveAlerts(x);if(c.mounted)Navigator.pop(c);},child:const Text('Guardar'))])));
   }
 
-  Future<void> _profile(BuildContext context)async{final n=TextEditingController(text:store.profile.name),e=TextEditingController(text:store.profile.email),key=GlobalKey<FormState>();await showDialog(context:context,builder:(c)=>AlertDialog(title:const Text('Mi perfil'),content:Form(key:key,child:Column(mainAxisSize:MainAxisSize.min,children:[TextFormField(controller:n,validator:(v)=>FinanziaValidators.requiredText(v,label:'El nombre'),decoration:const InputDecoration(labelText:'Nombre')),const SizedBox(height:12),TextFormField(controller:e,keyboardType:TextInputType.emailAddress,validator:FinanziaValidators.email,decoration:const InputDecoration(labelText:'Correo'))])),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancelar')),FilledButton(onPressed:()async{if(!(key.currentState?.validate()??false))return;await store.updateProfile(store.profile.copyWith(name:n.text.trim(),email:e.text.trim()));if(c.mounted)Navigator.pop(c);},child:const Text('Guardar'))]));}
+  Future<void> _profile(BuildContext context)async{
+    final authUser=SupabaseConfig.configured?Supabase.instance.client.auth.currentUser:null;
+    final currentEmail=authUser?.email??store.profile.email;
+    final n=TextEditingController(text:store.profile.name),e=TextEditingController(text:currentEmail),key=GlobalKey<FormState>();
+    await showDialog(context:context,builder:(c)=>AlertDialog(title:const Text('Mi perfil'),content:Form(key:key,child:Column(mainAxisSize:MainAxisSize.min,children:[TextFormField(controller:n,validator:(v)=>FinanziaValidators.requiredText(v,label:'El nombre'),decoration:const InputDecoration(labelText:'Nombre')),const SizedBox(height:12),TextFormField(controller:e,keyboardType:TextInputType.emailAddress,validator:FinanziaValidators.email,decoration:InputDecoration(labelText:'Correo',helperText:authUser==null?'Perfil local':'Supabase enviará confirmación si es necesaria'))])),actions:[TextButton(onPressed:()=>Navigator.pop(c),child:const Text('Cancelar')),FilledButton(onPressed:()async{
+      if(!(key.currentState?.validate()??false))return;
+      final name=n.text.trim(),email=e.text.trim();
+      try{
+        if(authUser!=null&&email!=currentEmail){await Supabase.instance.client.auth.updateUser(UserAttributes(email:email));}
+        await store.updateProfile(store.profile.copyWith(name:name,email:email));
+        if(c.mounted)Navigator.pop(c);
+        if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(authUser!=null&&email!=currentEmail?'Perfil actualizado. Revisa tu correo si Supabase solicita confirmar el cambio.':'Perfil actualizado.')));
+      }catch(err){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('No se pudo actualizar el perfil: $err')));}
+    },child:const Text('Guardar'))]));
+  }
   Future<void> _currency(BuildContext context)async{final v=await showDialog<String>(context:context,builder:(c)=>SimpleDialog(title:const Text('Moneda principal'),children:['USD','EUR','GBP','MXN','COP','VES'].map((x)=>SimpleDialogOption(onPressed:()=>Navigator.pop(c,x),child:Text(x))).toList()));if(v!=null)store.updateProfile(store.profile.copyWith(currency:v));}
   Future<void> _deleteAccount(BuildContext context)async{final confirm=TextEditingController();final ok=await showDialog<bool>(context:context,builder:(c)=>AlertDialog(title:const Text('Eliminar cuenta permanentemente'),content:Column(mainAxisSize:MainAxisSize.min,children:[const Text('Esta acción no se puede deshacer. Escribe ELIMINAR para confirmar.'),const SizedBox(height:16),TextField(controller:confirm,decoration:const InputDecoration(labelText:'Confirmación'))]),actions:[TextButton(onPressed:()=>Navigator.pop(c,false),child:const Text('Cancelar')),FilledButton(onPressed:()=>Navigator.pop(c,confirm.text.trim().toUpperCase()=='ELIMINAR'),child:const Text('Eliminar definitivamente'))]))??false;if(!ok||!context.mounted)return;try{await AccountDeletionService(Supabase.instance.client).deleteCurrentUser(store);if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Cuenta eliminada.')));}catch(e){if(context.mounted)ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text('No se pudo eliminar la cuenta: $e')));}}
 

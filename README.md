@@ -67,3 +67,15 @@ Pulido de privacidad, planificación y preparación QA/tiendas.
 
 ## Release Candidate 6
 Cierre financiero y de sincronización previo a 1.0. Consulta `docs/FINAL_1_0_GATE.md`.
+
+
+## Release Candidate 8
+Segundo bloque de endurecimiento de seguridad, sincronización y UX. Consulta `docs/RELEASE_CANDIDATE_8.md`.
+\n\n## Release Candidate 9\nExportaciones móviles compartibles, calendario recurrente reforzado y deduplicación de notificaciones.\n
+
+## Release Candidate 10
+Endurecimiento de sincronización, RLS, CI y gates E2E de eliminación de cuenta.
+
+
+## Release Candidate 11
+Reintentos controlados de sincronización y cierre de gates de producción. Consulta `docs/PRODUCTION_READINESS_RC11.md`.

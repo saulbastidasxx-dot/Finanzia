@@ -14,4 +14,9 @@ class PreferencesService {
   Future<void> saveThemeMode(ThemeMode mode) async => (await SharedPreferences.getInstance()).setString('theme_mode',switch(mode){ThemeMode.light=>'light',ThemeMode.dark=>'dark',ThemeMode.system=>'system'});
   Future<bool> loadPrivacyMode() async => (await SharedPreferences.getInstance()).getBool('privacy_hide_amounts')??false;
   Future<void> savePrivacyMode(bool hidden) async => (await SharedPreferences.getInstance()).setBool('privacy_hide_amounts',hidden);
+  Future<void> clearUserScopedPreferences() async {
+    final p=await SharedPreferences.getInstance();
+    final keys=p.getKeys().where((k)=>k.startsWith('finanzia_notified_')||k.startsWith('alerts_')||k=='privacy_hide_amounts').toList();
+    for(final key in keys){await p.remove(key);}
+  }
 }

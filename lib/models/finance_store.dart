@@ -60,7 +60,7 @@ class FinanceStore extends ChangeNotifier {
 
   double balanceFor(String id){final a=accounts.firstWhere((e)=>e.id==id);var v=a.openingBalance;for(final t in transactions){if(t.type==TransactionType.income&&t.accountId==id)v+=t.amount;if(t.type==TransactionType.expense&&t.accountId==id)v-=t.amount;if(t.type==TransactionType.transfer){if(t.accountId==id)v-=t.amount;if(t.destinationAccountId==id)v+=t.amount;}}return v;}
   double get totalAssets=>accounts.where((a)=>a.type!=AccountType.creditCard).fold(0,(s,a)=>s+balanceFor(a.id));
-  double get cardDebt=>accounts.where((a)=>a.type==AccountType.creditCard).fold(0,(s,a)=>s+(-balanceFor(a.id)).clamp(0,double.infinity));
+  double get cardDebt=>accounts.where((a)=>a.type==AccountType.creditCard).fold<double>(0.0,(s,a)=>s+(-balanceFor(a.id)).clamp(0.0,double.infinity).toDouble());
   double get debtTotal=>debts.fold(0,(s,d)=>s+d.balance);
   double get netWorth=>totalAssets-cardDebt-debtTotal;
   double get monthIncome=>amountForMonth(TransactionType.income,DateTime.now());
@@ -88,7 +88,7 @@ class FinanceStore extends ChangeNotifier {
   Future<void> addRecurring(RecurringPayment x)async{recurring.add(x);_record('recurring',x.id,'upsert',x.toJson());await _save();notifyListeners();}
   Future<void> updateRecurring(RecurringPayment x)async{final i=recurring.indexWhere((e)=>e.id==x.id);if(i<0)return;recurring[i]=x;_record('recurring',x.id,'upsert',x.toJson());await _save();notifyListeners();}
   Future<void> deleteRecurring(String id)async{recurring.removeWhere((x)=>x.id==id);_record('recurring',id,'delete');await _save();notifyListeners();}
-  Future<void> contributeGoal(String id,double amount)async{final i=goals.indexWhere((g)=>g.id==id);if(i<0||amount<=0)return;goals[i]=goals[i].copyWith(current:(goals[i].current+amount).clamp(0,goals[i].target));_record('goal',id,'upsert',goals[i].toJson());await _save();notifyListeners();}
+  Future<void> contributeGoal(String id,double amount)async{final i=goals.indexWhere((g)=>g.id==id);if(i<0||amount<=0)return;goals[i]=goals[i].copyWith(current:(goals[i].current+amount).clamp(0.0,goals[i].target).toDouble());_record('goal',id,'upsert',goals[i].toJson());await _save();notifyListeners();}
   Future<void> addCategory(String x)async{if(x.trim().isNotEmpty&&!categories.contains(x.trim()))categories.add(x.trim());await _save();notifyListeners();}
   Future<bool> deleteCategory(String x)async{final used=transactions.any((t)=>t.category==x)||budgets.any((b)=>b.category==x)||recurring.any((r)=>r.category==x);if(used)return false;categories.remove(x);await _save();notifyListeners();return true;}
   Future<void> updateProfile(UserProfile x)async{profile=x;_record('profile','profile','upsert',x.toJson());await _save();notifyListeners();}

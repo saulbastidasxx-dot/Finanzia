@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'retry_policy.dart';
 import 'package:uuid/uuid.dart';
 import '../models/finance_store.dart';
 import '../models/finance_models.dart';
@@ -8,6 +9,7 @@ import '../models/change_event.dart';
 enum SyncOutcome { uploaded, downloaded, merged, unchanged, conflict }
 
 class CloudSyncService {
+  final RetryPolicy retryPolicy=const RetryPolicy();
   final SupabaseClient client;
   const CloudSyncService(this.client);
   String get uid => client.auth.currentUser!.id;
@@ -27,8 +29,13 @@ class CloudSyncService {
   }
 
   Future<Set<String>> _remoteChangedKeys(DateTime since,String deviceId)async{
-    final rows=await client.from('sync_changes').select('entity,entity_id,device_id').eq('user_id',uid).gt('changed_at',since.toUtc().toIso8601String());
+    final rows=await retryPolicy.run(()=>client.from('sync_changes').select('entity,entity_id,device_id').eq('user_id',uid).gt('changed_at',since.toUtc().toIso8601String()).order('changed_at'));
     return rows.where((r)=>r['device_id']!=deviceId).map<String>((r)=>'${r['entity']}:${r['entity_id']}').toSet();
+  }
+
+  Future<void> _pruneChangeLog() async {
+    final cutoff=DateTime.now().toUtc().subtract(const Duration(days:90));
+    await client.from('sync_changes').delete().eq('user_id',uid).lt('changed_at',cutoff.toIso8601String());
   }
 
   Future<SyncOutcome> smartSync(FinanceStore s) async {
@@ -63,7 +70,7 @@ class CloudSyncService {
     final now=DateTime.now().toUtc();
     await client.from('sync_state').upsert({'user_id':uid,'revision':revision,'updated_at':now.toIso8601String()});
     final remote=await cloudUpdatedAt()??now;
-    await s.markChangesSynced(pending.map((e)=>e.id),remote);
+    await s.markChangesSynced(pending.map((e)=>e.id),remote);await _pruneChangeLog();
   }
 
   Future<void> _applyChange(ChangeEvent e)async{
@@ -75,7 +82,7 @@ class CloudSyncService {
     if(e.entity=='account'){
       final id=_cloudId('account',e.entityId);
       if(e.action=='delete'){await client.from('accounts').delete().eq('user_id',uid).eq('id',id);return;}
-      if(p!=null)await client.from('accounts').upsert({'id':id,'user_id':uid,'name':p['name'],'type':p['type'],'opening_balance':p['openingBalance'],'credit_limit':p['creditLimit'],'updated_at':e.changedAt.toIso8601String()});
+      if(p!=null)await client.from('accounts').upsert({'id':id,'user_id':uid,'name':p['name'],'type':p['type'],'opening_balance':p['openingBalance'],'credit_limit':p['creditLimit'],'statement_day':p['statementDay'],'due_day':p['dueDay'],'updated_at':e.changedAt.toIso8601String()});
       return;
     }
     if(e.entity=='transaction'){
@@ -111,21 +118,22 @@ class CloudSyncService {
 
   Future<void> upload(FinanceStore s) async {
     final accountMap={for(final a in s.accounts)a.id:_cloudId('account',a.id)};
-    for(final table in ['transactions','recurring_payments','budgets','goals','debts','accounts']){await client.from(table).delete().eq('user_id',uid);}
+    // Snapshot upload is deliberately non-destructive: valid remote rows are never erased before replacements exist.
+    // Explicit deletions are handled by incremental change events.
     await client.from('profiles').upsert({'id':uid,'name':s.profile.name,'currency':s.profile.currency});
     final now=DateTime.now().toUtc().toIso8601String();
-    if(s.accounts.isNotEmpty)await client.from('accounts').insert(s.accounts.map((a)=>{'id':accountMap[a.id],'user_id':uid,'name':a.name,'type':a.type.name,'opening_balance':a.openingBalance,'credit_limit':a.creditLimit,'updated_at':now}).toList());
-    if(s.transactions.isNotEmpty)await client.from('transactions').insert(s.transactions.map((t)=>{'id':_cloudId('transaction',t.id),'user_id':uid,'type':t.type.name,'amount':t.amount,'category':t.category,'description':t.description,'account_id':accountMap[t.accountId],'destination_account_id':t.destinationAccountId==null?null:accountMap[t.destinationAccountId],'occurred_at':t.date.toUtc().toIso8601String(),'updated_at':now}).toList());
-    if(s.budgets.isNotEmpty)await client.from('budgets').insert(s.budgets.map((x)=>{'id':_cloudId('budget',x.id),'user_id':uid,'category':x.category,'monthly_limit':x.limit,'updated_at':now}).toList());
-    if(s.goals.isNotEmpty)await client.from('goals').insert(s.goals.map((x)=>{'id':_cloudId('goal',x.id),'user_id':uid,'name':x.name,'target':x.target,'current_amount':x.current,'target_date':x.targetDate?.toIso8601String().split('T').first,'updated_at':now}).toList());
-    if(s.debts.isNotEmpty)await client.from('debts').insert(s.debts.map((x)=>{'id':_cloudId('debt',x.id),'user_id':uid,'name':x.name,'balance':x.balance,'apr':x.apr,'minimum_payment':x.minimumPayment,'due_date':x.dueDate?.toIso8601String().split('T').first,'updated_at':now}).toList());
-    if(s.recurring.isNotEmpty)await client.from('recurring_payments').insert(s.recurring.map((x)=>{'id':_cloudId('recurring',x.id),'user_id':uid,'name':x.name,'category':x.category,'account_id':accountMap[x.accountId],'amount':x.amount,'day_of_month':x.dayOfMonth,'is_expense':x.isExpense,'active':x.active,'updated_at':now}).toList());
+    if(s.accounts.isNotEmpty)await client.from('accounts').upsert(s.accounts.map((a)=>{'id':accountMap[a.id],'user_id':uid,'name':a.name,'type':a.type.name,'opening_balance':a.openingBalance,'credit_limit':a.creditLimit,'statement_day':a.statementDay,'due_day':a.dueDay,'updated_at':now}).toList());
+    if(s.transactions.isNotEmpty)await client.from('transactions').upsert(s.transactions.map((t)=>{'id':_cloudId('transaction',t.id),'user_id':uid,'type':t.type.name,'amount':t.amount,'category':t.category,'description':t.description,'account_id':accountMap[t.accountId],'destination_account_id':t.destinationAccountId==null?null:accountMap[t.destinationAccountId],'occurred_at':t.date.toUtc().toIso8601String(),'updated_at':now}).toList());
+    if(s.budgets.isNotEmpty)await client.from('budgets').upsert(s.budgets.map((x)=>{'id':_cloudId('budget',x.id),'user_id':uid,'category':x.category,'monthly_limit':x.limit,'updated_at':now}).toList());
+    if(s.goals.isNotEmpty)await client.from('goals').upsert(s.goals.map((x)=>{'id':_cloudId('goal',x.id),'user_id':uid,'name':x.name,'target':x.target,'current_amount':x.current,'target_date':x.targetDate?.toIso8601String().split('T').first,'updated_at':now}).toList());
+    if(s.debts.isNotEmpty)await client.from('debts').upsert(s.debts.map((x)=>{'id':_cloudId('debt',x.id),'user_id':uid,'name':x.name,'balance':x.balance,'apr':x.apr,'minimum_payment':x.minimumPayment,'due_date':x.dueDate?.toIso8601String().split('T').first,'updated_at':now}).toList());
+    if(s.recurring.isNotEmpty)await client.from('recurring_payments').upsert(s.recurring.map((x)=>{'id':_cloudId('recurring',x.id),'user_id':uid,'name':x.name,'category':x.category,'account_id':accountMap[x.accountId],'amount':x.amount,'day_of_month':x.dayOfMonth,'is_expense':x.isExpense,'active':x.active,'updated_at':now}).toList());
     final previous=await client.from('sync_state').select('revision').eq('user_id',uid).maybeSingle();
     final revision=((previous?['revision'] as num?)?.toInt()??0)+1;
     final at=DateTime.now().toUtc();
     await client.from('sync_state').upsert({'user_id':uid,'revision':revision,'updated_at':at.toIso8601String()});
     await client.from('sync_changes').insert({'user_id':uid,'entity':'snapshot','entity_id':uid,'action':'replace','device_id':s.deviceId,'changed_at':at.toIso8601String()});
-    final remote=await cloudUpdatedAt()??at;await s.markSynced(remote);
+    final remote=await cloudUpdatedAt()??at;await s.markSynced(remote);await _pruneChangeLog();
   }
 
   Future<void> download(FinanceStore s) async {
@@ -139,7 +147,7 @@ class CloudSyncService {
     final remote=await cloudUpdatedAt()??DateTime.now().toUtc();
     await s.replaceAll(
       profile:UserProfile(name:p?['name']??client.auth.currentUser?.userMetadata?['name']??'Usuario',email:client.auth.currentUser?.email??'',currency:p?['currency']??'USD'),
-      accounts:aa.map<FinanceAccount>((a)=>FinanceAccount(id:a['id'],name:a['name'],type:AccountType.values.byName(a['type']),openingBalance:(a['opening_balance'] as num).toDouble(),creditLimit:(a['credit_limit'] as num?)?.toDouble())).toList(),
+      accounts:aa.map<FinanceAccount>((a)=>FinanceAccount(id:a['id'],name:a['name'],type:AccountType.values.byName(a['type']),openingBalance:(a['opening_balance'] as num).toDouble(),creditLimit:(a['credit_limit'] as num?)?.toDouble(),statementDay:(a['statement_day'] as num?)?.toInt(),dueDay:(a['due_day'] as num?)?.toInt())).toList(),
       transactions:tt.map<FinanceTransaction>((t)=>FinanceTransaction(id:t['id'],type:TransactionType.values.byName(t['type']),amount:(t['amount'] as num).toDouble(),category:t['category'],description:t['description']??'',accountId:t['account_id'],destinationAccountId:t['destination_account_id'],date:DateTime.parse(t['occurred_at']).toLocal())).toList(),
       budgets:bb.map<Budget>((x)=>Budget(id:x['id'],category:x['category'],limit:(x['monthly_limit'] as num).toDouble())).toList(),
       goals:gg.map<SavingsGoal>((x)=>SavingsGoal(id:x['id'],name:x['name'],target:(x['target'] as num).toDouble(),current:(x['current_amount'] as num).toDouble(),targetDate:x['target_date']==null?null:DateTime.parse(x['target_date']))).toList(),

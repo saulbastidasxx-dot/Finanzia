@@ -1,24 +1,22 @@
-# Environment / secrets
-.env
-.env.*
-!.env.example
-
-# Flutter / Dart
 .dart_tool/
 .packages
 .pub/
 build/
 .flutter-plugins
 .flutter-plugins-dependencies
-
-# IDE
 .idea/
 .vscode/
 *.iml
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Logs
-*.log
+.env
+.env.*
+!.env.example
+android/.gradle/
+android/local.properties
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+macos/Pods/
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.mobileprovision

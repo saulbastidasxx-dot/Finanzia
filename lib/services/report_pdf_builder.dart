@@ -8,8 +8,9 @@ import '../models/finance_store.dart';
 Future<Uint8List> buildFinancePdf(FinanceStore store) async {
   final doc=pw.Document(title:'Reporte Finanzia');
   final money=NumberFormat.currency(symbol:'${store.profile.currency} ');
+  final now=DateTime.now();
   final byCategory=<String,double>{};
-  for(final t in store.transactions.where((x)=>x.type==TransactionType.expense)){
+  for(final t in store.transactions.where((x)=>x.type==TransactionType.expense && x.date.year==now.year && x.date.month==now.month)){
     byCategory[t.category]=(byCategory[t.category]??0)+t.amount;
   }
   final categories=byCategory.entries.toList()..sort((a,b)=>b.value.compareTo(a.value));
@@ -26,10 +27,10 @@ Future<Uint8List> buildFinancePdf(FinanceStore store) async {
       ]),
       pw.SizedBox(height:24),pw.Text('Cuentas',style:pw.TextStyle(fontSize:18,fontWeight:pw.FontWeight.bold)),pw.SizedBox(height:8),
       pw.Table.fromTextArray(headers:['Cuenta','Tipo','Saldo'],data:store.accounts.map((a)=>[a.name,a.type.name,money.format(store.balanceFor(a.id))]).toList()),
-      pw.SizedBox(height:24),pw.Text('Gastos por categoria',style:pw.TextStyle(fontSize:18,fontWeight:pw.FontWeight.bold)),pw.SizedBox(height:8),
+      pw.SizedBox(height:24),pw.Text('Gastos por categoria · mes actual',style:pw.TextStyle(fontSize:18,fontWeight:pw.FontWeight.bold)),pw.SizedBox(height:8),
       if(categories.isEmpty) pw.Text('Sin gastos registrados.') else pw.Table.fromTextArray(headers:['Categoria','Total'],data:categories.take(12).map((e)=>[e.key,money.format(e.value)]).toList()),
       pw.SizedBox(height:24),pw.Text('Movimientos recientes',style:pw.TextStyle(fontSize:18,fontWeight:pw.FontWeight.bold)),pw.SizedBox(height:8),
-      pw.Table.fromTextArray(headers:['Fecha','Tipo','Descripcion','Monto'],data:store.transactions.take(20).map((t)=>[DateFormat('dd/MM/yy').format(t.date),t.type.name,t.description,money.format(t.amount)]).toList()),
+      pw.Table.fromTextArray(headers:['Fecha','Tipo','Descripcion','Monto'],data:(store.transactions.toList()..sort((a,b)=>b.date.compareTo(a.date))).take(20).map((t)=>[DateFormat('dd/MM/yy').format(t.date),t.type.name,t.description,money.format(t.amount)]).toList()),
       pw.SizedBox(height:18),pw.Text('Este reporte resume los datos registrados en Finanzia y no constituye asesoramiento financiero.',style:const pw.TextStyle(fontSize:9)),
     ],
   ));
